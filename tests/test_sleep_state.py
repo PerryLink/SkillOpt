@@ -177,3 +177,24 @@ def test_unreadable_state_is_reported_and_left_untouched(tmp_path, monkeypatch):
 
     # A genuinely absent file is still an ordinary first run.
     assert SleepState.load(str(tmp_path / "absent.json")).night == 0
+
+@pytest.mark.parametrize(
+    "body",
+    [b"[]", b"[1, 2, 3]", b"null", b"42", b'"a string"'],
+    ids=["list", "list-of-ints", "null", "number", "string"],
+)
+def test_non_object_state_is_reported_and_left_untouched(tmp_path, body):
+    """A JSON document that is not an object must not be replaced silently.
+
+    json.loads succeeds for a list, null or scalar, but the state is a mapping.
+    Coercing those to an empty dict hands back a fresh state, so the first
+    save() after the load replaces whatever was on disk.
+    """
+    path = tmp_path / "state.json"
+    path.write_bytes(body)
+
+    with pytest.raises(StateFileError) as excinfo:
+        SleepState.load(str(path))
+
+    assert str(path) in str(excinfo.value)  # the message names the file to move
+    assert path.read_bytes() == body        # and the file was not touched
