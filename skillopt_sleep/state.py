@@ -74,7 +74,14 @@ def _read_state(path: str) -> Dict[str, Any]:
             f"it is unreadable."
         ) from json_error
 
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        raise StateFileError(
+            f"{path} holds a JSON {type(data).__name__}, not a JSON object, so it cannot be "
+            f"used as state. It has been left untouched. Move or delete it to start from a "
+            f"fresh state; it will not be overwritten while it is unreadable."
+        )
+
+    return data
 
 
 def _now_iso(clock: Optional[float] = None) -> str:
